@@ -17,7 +17,7 @@
     ```
 2. 下載腳本:
     ```sh
-    sudo wget https://github.com/zz22558822/LibreNMS-Install/blob/master/LibreNMS_Install.sh
+    sudo wget https://github.com/zz22558822/LibreNMS_Install/blob/master/LibreNMS_Install.sh
     ```
 3. 運行腳本:
     ```sh
