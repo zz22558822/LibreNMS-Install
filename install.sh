@@ -1,122 +1,121 @@
-# LibreNMS Install script
-# NOTE: Script wil update and upgrade currently installed packages.
-# Updated for ubuntu 24.04
+# LibreNMS 安裝腳本
+# 注意：腳本將更新並升級目前安裝的軟體包。
+# 更新支援到 Ubuntu 24.04
 #!/bin/bash
-echo "This will install LibreNMS. Developed on Ubuntu 22.04 lts"
+echo "此腳本將安裝 LibreNMS 至您的 Ubuntu 22.04 LTS"
 echo "###########################################################"
-echo "Updating the repo cache and installing needed repos"
+echo "更新存儲庫快取並安裝所需的存儲庫"
 echo "###########################################################"
 # Set the system timezone
-echo "Have you set the system time zone?: [yes/no]"
+echo "您是否設定了系統時區?: [yes/no]"
 read ANS
 if [ "$ANS" = "N" ] || [ "$ANS" = "No" ] || [ "$ASN" = "NO'" ] || [ "$ANS" = "no" ] || [ "$ANS" = "n" ]; then
-  echo "We will list the timezones"
-  echo "Use q to quite the list"
+  echo "接下來將列出時區"
+  echo "按下 Q 來退出列表"
   echo "-----------------------------"
   sleep 5
   echo " "
   timedatectl list-timezones
-  echo "Enter system time zone:"
+  echo "輸入系統時區:"
   read TZ
   timedatectl set-timezone $TZ
-  echo "The timezone $TZ  has been set"
+  echo "已設置時區為 $TZ"
   else
    TZ="$(cat /etc/timezone)"
 fi
 echo " "
-echo "updating repos"
+echo "更新存儲庫"
 apt update
-# Installing Required Packages
+# 安裝所需的套件
 echo " "
-echo "Installing required packages"
+echo "安裝所需的套件"
 apt install -y software-properties-common
 add-apt-repository universe
-echo "Upgrading installed packages in the system"
+echo "升級系統中已安裝的套件"
 echo "###########################################################"
 apt upgrade -y
-echo "Installing dependancies"
+echo "安裝相依性套件"
 echo "###########################################################"
 sleep 1
-echo " Here "
+echo ""
 sleep 1
-echo  " we "
+echo  " 請稍後... "
 sleep 2
-echo " GO!!! "
+echo " 目前即將開始安裝... "
 echo "###########################################################"
 echo "###########################################################"
 
-# Version 8 has moved json into core code and it is no longer a separate module. 
-# composer, python3-memcashe, not listed for 22.04
+# 版本 8 已將 json 移至核心程式碼中，它不再是一個單獨的模組。 
+# composer, python3-memcashe, 不存在於 22.04 當中
 apt install -y acl composer python3-memcache curl fping git graphviz imagemagick mariadb-client \
 mariadb-server mtr-tiny nginx-full nmap php8.3-cli php8.3-curl php8.3-fpm \
 php8.3-gd php8.3-gmp php8.3-mbstring php8.3-mysql php8.3-snmp php8.3-xml \
 php8.3-zip python3-pymysql python3-psutil python3-command-runner python3-dotenv \
 python3-redis python3-setuptools python3-systemd python3-pip python3-mysqldb rrdtool \
 snmp snmpd whois unzip traceroute \
-# Download LibreNMS
-echo "Downloading libreNMS to /opt"
+# 下載 LibreNMS
+echo "將 libreNMS 下載到 /opt"
 echo "###########################################################"
 cd /opt
 git clone https://github.com/librenms/librenms.git
-# Add librenms user
-echo "Creating libreNMS user account, set the home directory, don't create it."
+# 添加 librenms 使用者
+echo "建立 libreNMS 使用者帳戶，設置主目錄，但不建立主目錄"
 echo "###########################################################"
-# add user link home directory, do not create home directory, system user
+# 添加使用者，鏈接主目錄，不創建主目錄，系統使用者
 useradd librenms -d /opt/librenms -M -r -s "$(which bash)"
-# Add librenms user to www-data group
-  # echo "Adding libreNMS user to the www-data group"
+# 添加 librenms 使用者到 www-data 群組
+  # echo "將 libreNMS 使用者添加到 www-data 群組"
   # echo "###########################################################"
   # usermod -a -G librenms www-data
-# Set permissions and access controls
-echo "Setting permissions and file access controls"
+# 設置權限和訪問控制
+echo "設置權限和文件訪問控制"
 echo "###########################################################"
-# set owner:group recursively on directory
+# 在目錄上遞歸設置所有者:群組
 chown -R librenms:librenms /opt/librenms
-# mod permission on directory O=All,G=All, Oth=none
+# 修改目錄權限 O=所有，G=所有，其他=無
 chmod 771 /opt/librenms
-# mod default ACL
+# 修改預設 ACL
 setfacl -d -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstrap/cache/ /opt/librenms/storage/
-# mod ACL recursively
+# 遞歸修改 ACL
 setfacl -R -m g::rwx /opt/librenms/rrd /opt/librenms/logs /opt/librenms/bootstrap/cache/ /opt/librenms/storage/
-### Install PHP dependencies
-echo "running PHP installer script as librenms user"
+### 安裝 PHP 相依性
+echo "使用 librenms 身份運行 PHP 安裝腳本"
 echo "###########################################################"
-# run php dependencies installer
+# 運行 PHP 相依性安裝程式
 su librenms bash -c '/opt/librenms/scripts/composer_wrapper.php install --no-dev'
-# warn for failure
+# 失敗警告
 echo " "
 echo "###########################################################"
-echo "The script may fail when using a proxy. The workaround is to install the composer \
-package manually. See the install page of LibreNMS."
+echo "在使用代理時，腳本可能會失敗。解決方法是手動安裝 composer 套件。請參閱 LibreNMS 的安裝頁面。"
 echo " "
 sleep 10
-# Configure MySQL (mariadb)
+# 配置 MySQL (mariadb)
 echo "###########################################################"
-echo "Configuring MariaDB"
+echo "配置 MariaDB"
 echo "###########################################################"
 systemctl restart mariadb
-# Pass commands to mysql and create DB, user, and privlages
+# 傳送命令到 mysql 並創建資料庫、使用者和權限
 echo " "
-echo "Please enter a password for the Database:"
+echo "請輸入要設定的資料庫密碼:"
 read ANS
 echo " "
 echo "###########################################################"
-echo "######### MariaDB DB:librenms Password:$ANS #################"
+echo "######### MariaDB 資料庫:librenms 密碼:$ANS #################"
 echo "###########################################################"
 mysql -uroot -e "CREATE DATABASE librenms CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
 mysql -uroot -e "CREATE USER 'librenms'@'localhost' IDENTIFIED BY '$ANS';"
 mysql -uroot -e "GRANT ALL PRIVILEGES ON librenms.* TO 'librenms'@'localhost';"
 mysql -uroot -e "FLUSH PRIVILEGES;"
-##### Within the [mysqld] section of the config file please add: ####
+##### 在配置文件的 [mysqld] 部分添加以下內容: ####
 ## innodb_file_per_table=1
 ## lower_case_table_names=0
 sed -i '/mysqld]/ a lower_case_table_names=0' /etc/mysql/mariadb.conf.d/50-server.cnf
 sed -i '/mysqld]/ a innodb_file_per_table=1' /etc/mysql/mariadb.conf.d/50-server.cnf
-##### Restart mysql and enable run at startup
+##### 重新啟動 mysql 並啟用開機自動運行
 systemctl restart mariadb
 systemctl enable mariadb
-### Configure and Start PHP-FPM ####
-## NEW in 20.04 brought forward to 22.04##
+### 配置並啟動 PHP-FPM ####
+## 新功能於 20.04 引入並在 22.04 中保留##
 cp /etc/php/8.3/fpm/pool.d/www.conf /etc/php/8.3/fpm/pool.d/librenms.conf
 # vi /etc/php/8.3/fpm/pool.d/librenms.conf
 #line 4
@@ -127,28 +126,28 @@ sed -i 's/user = www-data/user = librenms/' /etc/php/8.3/fpm/pool.d/librenms.con
 sed -i 's/group = www-data/group = librenms/' /etc/php/8.3/fpm/pool.d/librenms.conf
 # line 36
 sed -i 's/listen = \/run\/php\/php8.3-fpm.sock/listen = \/run\/php-fpm-librenms.sock/' /etc/php/8.3/fpm/pool.d/librenms.conf
-#### Change time zone to America/[City] in the following: ####
+#### 在以下文件中將時區更改為 America/[City]：####
 # /etc/php/8.3/fpm/php.ini
 # /etc/php/8.3/cli/php.ini
-echo "Timezone is being set to $TZ in /etc/php/8.3/fpm/php.ini and /etc/php/8.3/cli/php.ini change if needed."
-echo "Changing to $TZ"
+echo "正在將時區設置為 $TZ 於 /etc/php/8.3/fpm/php.ini 和 /etc/php/8.3/cli/php.ini，如有需要請更改。"
+echo "更改為 $TZ"
 echo "################################################################################"
 echo " "
-# Line 969 Appened
+# 第 969 行新增
 sed -i "/;date.timezone =/ a date.timezone = $TZ" /etc/php/8.3/fpm/php.ini
-# Line 969 Appended
+# 第 969 行新增
 sed -i "/;date.timezone =/ a date.timezone = $TZ" /etc/php/8.3/cli/php.ini
 echo "????????????????????????????????????????????????????????????????????????????????"
-read -p "Please review changes in another terminal session then press [Enter] to continue..."
+read -p "請在另一個終端機中檢查更改，然後按 [Enter] 繼續..."
 echo " "
-### restart PHP-fpm ###
+### 重新啟動 PHP-fpm ###
 systemctl restart php8.3-fpm
-####  Config NGINX webserver ####
-### Create the .conf file ###
+#### 配置 NGINX 網頁伺服器 ####
+### 創建 .conf 文件 ###
 echo "################################################################################"
-echo "We need to change the sever name to the current IP unless the name is resolvable /etc/nginx/conf.d/librenms.conf"
+echo "將伺服器名稱更改為當前 IP，除非名稱可解析 /etc/nginx/conf.d/librenms.conf"
 echo "################################################################################"
-echo "Enter Hostname [x.x.x.x or serv.examp.com]: "
+echo "輸入主機名 [x.x.x.x or your.domain.com]: "
 read HOSTNAME
 echo "server {"> /etc/nginx/conf.d/librenms.conf
 echo " listen      80;" >>/etc/nginx/conf.d/librenms.conf
@@ -172,39 +171,38 @@ echo ' location ~ /\.(?!well-known).* {' >>/etc/nginx/conf.d/librenms.conf
 echo "  deny all;" >>/etc/nginx/conf.d/librenms.conf
 echo " }" >>/etc/nginx/conf.d/librenms.conf
 echo "}" >>/etc/nginx/conf.d/librenms.conf
-##### remove the default site link #####
+##### 移除預設的 Nginx Web連結 #####
 rm /etc/nginx/sites-enabled/default
 systemctl restart nginx
 systemctl restart php8.3-fpm
-#### Enble LNMS Command completion ####
+#### 啟用 LNMS 命令補全 ####
 ln -s /opt/librenms/lnms /usr/bin/lnms
 cp /opt/librenms/misc/lnms-completion.bash /etc/bash_completion.d/
-### Configure snmpd
+### 配置 snmpd
 cp /opt/librenms/snmpd.conf.example /etc/snmp/snmpd.conf
-### Edit the text which says RANDOMSTRINGGOESHERE and set your own community string.
-echo "We need to change community string"
-echo "Enter community string for this server [E.G.: public]: "
+### 編輯文字 "RANDOMSTRINGGOESHERE" 並設定自己的社群字串。
+echo "我們需要更改 SNMP 管理代理存取的密碼 (社群字串 community string)"
+echo "請輸入此伺服器的社群字串 [例如：public]: "
 read ANS
 sed -i 's/RANDOMSTRINGGOESHERE/$ANS/g' /etc/snmp/snmpd.conf
-######## get standard MIBs
+######## 獲取標準 MIBs
 curl -o /usr/bin/distro https://raw.githubusercontent.com/librenms/librenms-agent/master/snmp/distro
 chmod +x /usr/bin/distro
-#### Enable SNMP to run at startup ####
+#### 啟用 SNMP 開機自動啟動 ####
 systemctl enable snmpd
 systemctl restart snmpd
-##### Setup Cron job
+##### 設置 Cron 設定
 cp /opt/librenms/dist/librenms.cron /etc/cron.d/librenms
-####Enable the scheduler
+#### 啟用排程器
 cp /opt/librenms/dist/librenms-scheduler.service /opt/librenms/dist/librenms-scheduler.timer /etc/systemd/system/
 systemctl enable librenms-scheduler.timer
 systemctl start librenms-scheduler.timer
 
-##### Setup logrotate config
+##### 設置 logrotate 配置
 cp /opt/librenms/misc/librenms.logrotate /etc/logrotate.d/librenms
 ######
 echo " "
 echo "###############################################################################################"
-echo "Naviagte to http://$HOSTNAME/install in you web browser to finish the installation."
+echo "在您的網頁瀏覽器中開啟 http://$HOSTNAME/install 以完成安裝。"
 echo "###############################################################################################"
-echo " Have a nice day! ;)"
 #END#
